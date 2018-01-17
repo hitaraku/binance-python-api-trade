@@ -138,7 +138,7 @@ def sellCoin( symbol, tickerCount, orderQuantity ):
 
 # load config
 inifile = configparser.ConfigParser()
-inifile.read('./config/config.ini', 'UTF-8')
+inifile.read('../config/config.ini', 'UTF-8')
  
 # get APIKEY
 api_key = inifile.get('settings', 'API_KEY')
