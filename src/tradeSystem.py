@@ -3,11 +3,36 @@ import json
 from binance.client import Client 
 import time
 import re
+import math
 
 from datetime import datetime
 
 from binance.enums import *
 from binance.exceptions import *
+
+# load config
+inifile = configparser.ConfigParser()
+inifile.read('../config/config.ini', 'UTF-8')
+ 
+# get APIKEY
+api_key = inifile.get('settings', 'API_KEY')
+api_secret = inifile.get('settings', 'API_SECRET')
+
+# set binance client APIKEY
+client = Client(api_key, api_secret)
+
+# get all symbol prices
+prices = client.get_all_tickers()
+symbolLen = len(prices)
+
+print(prices[0]['symbol'])
+
+# before, after prices
+beforePrices = [prices[i]['price'] for i in range(symbolLen)]
+afterPrices = [0 for i in range(symbolLen)]
+
+# log to file
+file_object  = open("../log/" + datetime.now().strftime("%Y%m%d_%H%M%S")+"_log.txt", "w+") 
 
 def buyCoin( symbol, afterPrice, tickerCount ):
     try:
@@ -136,47 +161,29 @@ def sellCoin( symbol, tickerCount, orderQuantity ):
         print(e.message)
         return
 
-# load config
-inifile = configparser.ConfigParser()
-inifile.read('./config/config.ini', 'UTF-8')
- 
-# get APIKEY
-api_key = inifile.get('settings', 'API_KEY')
-api_secret = inifile.get('settings', 'API_SECRET')
-
-# set binance client APIKEY
-client = Client(api_key, api_secret)
-
-# get all symbol prices
-prices = client.get_all_tickers()
-symbolLen = len(prices)
-
-print(prices[0]['symbol'])
-
-# before, after prices
-beforePrices = [prices[i]['price'] for i in range(symbolLen)]
-afterPrices = [0 for i in range(symbolLen)]
-
-# log to file
-file_object  = open("./log/" + datetime.now().strftime("%Y%m%d_%H%M%S")+"_log.txt", "w") 
-
 while 1:
-    # print("start func")
+    # 自分のBTCを取得
     balance = client.get_asset_balance(asset='BTC')
+    # Freeは「現在使用できるBTC」
     print("free myBTC : " + str(balance['free']))
+    # 7秒待ち
     time.sleep(7)
+    # すべての価格を取得
     prices = client.get_all_tickers()
     for i in range(symbolLen):
+        # 7秒後の現在の価格を取得
         afterPrices[i] = prices[i]['price']
-        # check 5% down 
+        # 前回の価格と現在の価格を比較し、パーセンテージを計算
         pricePropotion = 100 - (float(afterPrices[i]) / float(beforePrices[i])) * 100
-        # buy 5% down ticker 
+        # BTCのそれぞれの銘柄で指定パーセンテージ下がったら買いを入れる。5%以上下がったら買いを入れる。
         if ( pricePropotion ) > 5.0: 
             # Ticker BTC
             if re.search(r'BTC', prices[i]['symbol']) and (round (float(balance['free']) / (float(afterPrices[i]) * 1.03)) ) > 0.0:
                 # write file
                 file_object.write('time: ' + datetime.now().strftime("%Y/%m/%d %H:%M:%S") + ' , ticker: ' + prices[i]['symbol'] + ' , PricePropotion: ' + str(pricePropotion) + ' , afterprice: ' + afterPrices[i] + ' , beforePrice: ' + beforePrices[i] + "\n")
+                # 買いを入れたときの情報を表示
                 print('time: ' + datetime.now().strftime("%Y/%m/%d %H:%M:%S") + ' , ticker: ' + prices[i]['symbol'] + ' , PricePropotion: ' + str(pricePropotion) + ' , afterprice: ' + afterPrices[i] + ' , beforePrice: ' + beforePrices[i])
+                # 買いを入れるときにTickerの「シンボル」、「現在の価格」、「ループの番号」をbuyCoin関数に渡す
                 buyCoin(prices[i]['symbol'], afterPrices[i], i)
                 break
 
@@ -184,3 +191,5 @@ while 1:
         beforePrices[i] = prices[i]['price']
 
 file_object.close()
+
+
