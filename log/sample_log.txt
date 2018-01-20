@@ -1,0 +1,1 @@
+time: 2018/01/21 02:43:09 , ticker: LINKBTC , PricePropotion: 0.35236938031592047 , afterprice: 0.00008201 , beforePrice: 0.00008230
